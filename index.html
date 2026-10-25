@@ -1,155 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RDR2 World Map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English&display=swap" rel="stylesheet">
-<style>
-html, body, #map { height: 100%; margin: 0; padding: 0; font-family:"IM Fell English",serif; }
-#map { position: relative; background:#efe0c9; }
-.parchment { pointer-events:none; position:absolute; inset:0; background-image: linear-gradient(rgba(40,20,10,0.06), rgba(20,10,5,0.06)), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0.2"/><feColorMatrix type="matrix" values="1 0 0 0 0.1 0 1 0 0 0.05 0 0 1 0 0.02 0 0 0 0.4 0"/></filter><rect width="100%" height="100%" filter="url(%23g)" opacity="0.12"/></svg>'); mix-blend-mode: multiply; z-index:700; }
-.controls { position:absolute; left:12px; top:12px; z-index:1300; background:#2b1a11; color:#f6ead3; padding:0; border-radius:12px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,0.7); width:220px; border:2px solid #1a0f07; }
-.controls summary { font-family:"IM Fell English SC",serif; font-size:16px; cursor:pointer; padding:10px; background:#3a2315; border-radius:10px; border:1px solid #1a0f07; text-align:center; transition: transform 0.2s; }
-.controls summary:hover { transform:scale(1.02); background:#4a2e1b; }
-.controls details[open] { padding:10px; background:rgba(18,12,8,0.85); }
-.controls h1 { font-family:"IM Fell English SC",serif; margin:10px 0 4px; font-size:16px; }
-.controls button { display:block; width:100%; background:rgba(255,255,255,0.05); border:1px solid #1a0f07; color:#f6ead3; padding:8px; border-radius:8px; margin-top:6px; cursor:pointer; transition:transform 0.2s, background 0.2s; }
-.controls button:hover { transform:scale(1.02); background:rgba(255,255,255,0.1); }
-.controls label { display:block; color:#e9dcc7; margin-top:6px; font-size:12px; }
-.controls input[type="checkbox"] { accent-color:#4a2e1b; margin-right:6px; }
-.controls .info { color:#e9dcc7; margin-top:6px; font-size:12px; }
-.search-wrap { display:flex; gap:6px; margin-bottom:6px; }
-#search { flex:1; padding:8px; border-radius:8px; border:1px solid #1a0f07; background:rgba(255,248,234,0.95); font-family:"IM Fell English",serif; }
-#searchBtn { padding:8px; border-radius:8px; border:none; background:#3a2315; color:#f6ead3; cursor:pointer; transition:transform 0.2s, background 0.2s; }
-#searchBtn:hover { transform:scale(1.02); background:#4a2e1b; }
-.results { position:absolute; left:12px; top:140px; z-index:1400; width:260px; background:rgba(20,14,10,0.95); color:#efe2cc; border-radius:8px; padding:6px; display:none; box-shadow:0 8px 28px rgba(0,0,0,0.7); border:1px solid #1a0f07; }
-.results .item { padding:8px; border-bottom:1px dashed rgba(255,255,255,0.05); cursor:pointer; }
-.results .item:last-child { border-bottom:none; }
-.results .item:hover { background:rgba(255,255,255,0.05); }
-.compass { position:absolute; top:12px; right:12px; z-index:1300; width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:linear-gradient(#3a2315,#2b1a11); color:#f3e7d0; font-weight:700; font-family:"IM Fell English SC",serif; box-shadow:0 6px 16px rgba(0,0,0,0.6), inset 0 0 8px rgba(255,248,234,0.2); font-size:20px; border:2px solid #1a0f07; text-align:center;}
-.player-marker { width:48px; height:48px; display:flex; align-items:center; justify-content:center; transform-origin:center; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
-.place-icon { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#1a120b; color:#f6ead3; border:2px solid #1a0f07; box-shadow:0 6px 14px rgba(0,0,0,0.7); font-size:16px; font-family:"IM Fell English SC",serif; }
-.leaflet-popup-content-wrapper { background:rgba(20,14,10,0.95); color:#efe2cc; border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.7); border:1px solid #1a0f07; }
-.leaflet-popup-content { font-size:13px; font-family:"IM Fell English",serif; }
-.leaflet-control-zoom { box-shadow:0 4px 12px rgba(0,0,0,0.5); border-radius:8px; overflow:hidden; background:rgba(18,12,8,0.7); }
-.leaflet-control-zoom a { background:transparent; color:#f5e9d6; padding:8px 10px; }
-.leaflet-control-zoom a:hover { background:rgba(255,255,255,0.1); }
-.loading { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1500; color:#f6ead3; font-size:16px; display:none; }
-@media (max-width: 900px) { 
-img { 
-   max-width: 100%;
-   height: auto;
-}
-
-.table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-td, th {
-    padding: 8px;
-    text-align: left;
-    border: 1px solid #ddd;
-}
-}	
-
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>RDR2 Map - Tropys</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #1a1412;
+        }
+    </style>
 </head>
 <body>
-<div id="map"></div>
-<div class="parchment"></div>
 
-<details class="controls" id="controls">
-  <summary>Map Controls</summary>
-  <div class="search-wrap">
-    <input id="search" placeholder="Find city, address, landmark..." autocomplete="off"/>
-    <button id="searchBtn">Go</button>
-  </div>
-  <div class="info" id="coords">Lat: 0, Lon: 0</div>
-  <div class="info" id="zoom">Zoom: 2</div>
-  <div class="info" id="userAddress">Address: fetching...</div>
-  <h1>Map Options</h1>
-  <label><input type="checkbox" id="autoFetch" checked /> Auto-Fetch Location</label>
-  <label><input type="checkbox" id="autoFollow" checked /> Auto-Follow Player</label>
-  <h1>Actions</h1>
-  <button id="recenter">Recenter</button>
-  <button id="clearRoute">Clear Route</button>
-</details>
+    <div id="map"></div>
 
-<div class="results" id="results"></div>
-<div class="compass" id="compass">N</div>
-<div class="loading" id="loading">Loading...</div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Configuración de coordenadas planas para el mapa del juego
+        var map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -1,
+            maxZoom: 3,
+            zoomControl: false
+        });
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-// Map
-const map = L.map('map',{zoomControl:true,minZoom:2,maxZoom:18}).setView([0,0],2);
-const tiles = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=YOUR_MAPBOX_ACCESS_TOKEN', {
-  attribution: '© Mapbox © OpenStreetMap',
-  maxZoom:18,
-  tileSize:512,
-  zoomOffset:-1
-}).addTo(map);
+        // Controles de zoom abajo a la derecha
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-// Layers
-const placesLayer=L.layerGroup().addTo(map);
-const routeLayer=L.layerGroup().addTo(map);
+        // Dimensiones de la imagen del mapa
+        var bounds = [[0, 0], [4096, 4096]];
 
-// Player
-const playerIcon=L.divIcon({className:'player-marker',iconSize:[48,48],iconAnchor:[24,24],html:`<svg width="48" height="48" viewBox="0 0 48 48"><path d="M24 12 C27 12,30 15,30 19 C30 25,24 25,24 32 C24 25,18 25,18 19 C18 15,21 12,24 12 Z" fill="#e6d8b5" stroke="#1a0f07" stroke-width="1.2"/></svg>`});
-const playerMarker=L.marker([0,0],{icon:playerIcon}).addTo(map);
+        // Usamos una URL directa y estable de la imagen del mapa completo de RDR2
+        var imageUrl = 'https://images.igdb.com/igdb/image/upload/t_original/grm4w6.jpg';
 
-// DOM
-const coordsDiv=document.getElementById('coords');
-const zoomDiv=document.getElementById('zoom');
-const addressDiv=document.getElementById('userAddress');
-const loadingDiv=document.getElementById('loading');
-let watchId=null;
-const autoFetch=document.getElementById('autoFetch');
-const autoFollow=document.getElementById('autoFollow');
+        // Añadimos la imagen como una capa interactiva en el mapa
+        L.imageOverlay(imageUrl, bounds).addTo(map);
 
-// Address lookup
-function updateAddress(lat,lon){
-  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-    .then(r=>r.json()).then(d=>{addressDiv.textContent=`Address: ${d.display_name||'Unknown'}`}).catch(()=>{addressDiv.textContent='Address: Unknown';});
-}
+        // Ajustamos los límites y la vista inicial al centro del mapa
+        map.setMaxBounds([[-1000, -1000], [5096, 5096]]);
+        map.setView([2048, 2048], 0);
 
-// Geolocation
-function startGeolocation(){
-  if(navigator.geolocation && autoFetch.checked){
-    watchId=navigator.geolocation.watchPosition(pos=>{
-      const {latitude,longitude}=pos.coords;
-      const newPos=[latitude,longitude];
-      playerMarker.setLatLng(newPos);
-      if(autoFollow.checked){map.setView(newPos,12);}
-      coordsDiv.textContent=`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
-      updateAddress(latitude,longitude);
-    },err=>{console.error(err);loadingDiv.style.display='block';loadingDiv.textContent='Geolocation failed';setTimeout(()=>loadingDiv.style.display='none',3000);},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
-  }
-}
-startGeolocation();
-autoFetch.addEventListener('change',()=>{if(autoFetch.checked){startGeolocation();}else if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}});
-
-// Zoom
-map.on('zoomend',()=>{zoomDiv.textContent=`Zoom: ${map.getZoom()}`;});
-
-// Compass rotation
-const compass=document.getElementById('compass');
-if(window.DeviceOrientationEvent){window.addEventListener('deviceorientation',e=>{if(e.alpha!==null){const heading=e.alpha;compass.style.transform=`rotate(${360-heading}deg)`;}});}
-
-// Recenter and clear
-document.getElementById('recenter').addEventListener('click',()=>{map.setView(playerMarker.getLatLng(),12);});
-document.getElementById('clearRoute').addEventListener('click',()=>{routeLayer.clearLayers();});
-</script>
-<p style="bottom: 10px; right: 10px; position: absolute;"><a href="https://wordtohtml.net" target="_blank" style="font-size:11px; color: #d0d0d0">Converted to HTML with WordToHTML.net</a></p>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4581d6a58cf94e929fad52deda295622","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+        // Marcador de prueba en Valentine / zona central
+        L.marker([2048, 2048]).addTo(map)
+            .bindPopup('<b>¡Tropys RDR2 Map!</b><br>¡Mapa cargado con éxito!');
+    </script>
 </body>
 </html>
