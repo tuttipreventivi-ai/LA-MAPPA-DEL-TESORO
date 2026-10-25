@@ -4,67 +4,123 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LA MAPPA DEL TESORO</title>
-    <!-- Leaflet CSS per la gestione della mappa interattiva -->
-    <link rel="stylesheet" href="[suspicious link removed]" />
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: 'Georgia', serif;
-            background-color: #1e1b18;
-            color: #f4e8c1;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Georgia', serif; background-color: #12100e; color: #f4e8c1; }
+        
+        /* Intestazione overlay */
         header {
-            background-color: #2b251f;
-            padding: 15px 20px;
-            text-align: center;
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: rgba(30, 25, 20, 0.88);
+            backdrop-filter: blur(5px);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 2px solid #8b5a2b;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
-        header h1 {
-            font-size: 2rem;
-            letter-spacing: 3px;
+        h1 { font-size: 1.5rem; color: #d4af37; text-shadow: 1px 1px 3px #000; letter-spacing: 2px; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        button {
+            background: #3a3025;
             color: #d4af37;
-            text-shadow: 2px 2px 4px #000;
-        }
-        header p {
-            font-size: 0.9rem;
-            color: #c5b39b;
-            margin-top: 5px;
-        }
-        #map-container {
-            flex: 1;
-            width: 100%;
-            background-color: #12100e;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-        .leaflet-popup-content-wrapper {
-            background-color: #2b251f;
-            color: #f4e8c1;
             border: 1px solid #8b5a2b;
-            border-radius: 6px;
-        }
-        .leaflet-popup-tip {
-            background-color: #2b251f;
-        }
-        .popup-title {
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
             font-weight: bold;
-            color: #d4af37;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
         }
-        .popup-desc {
+        button:hover { background: #524434; color: #fff; }
+        
+        /* Area Visualizzazione Mappa */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+            background: #1a1612;
+        }
+        #viewport:active { cursor: grabbing; }
+
+        #map-container {
+            position: absolute;
+            transform-origin: 0 0;
+            user-select: none;
+        }
+
+        #map-img {
+            display: block;
+            pointer-events: none;
+            max-width: none;
+        }
+
+        /* Marker dei Tesori */
+        .marker {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: radial-gradient(circle, #ffea00 0%, #d4af37 60%, #8b5a2b 100%);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 234, 0, 0.8), 0 2px 5px rgba(0,0,0,0.8);
+            z-index: 10;
+            transition: transform 0.15s ease;
+        }
+        .marker:hover {
+            transform: translate(-50%, -50%) scale(1.35);
+            z-index: 20;
+            background: #ffffff;
+            border-color: #ffd700;
+        }
+
+        /* Finestra Modale per Dettagli/Inserimento */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            background: #2b251f;
+            border: 2px solid #8b5a2b;
+            border-radius: 8px;
+            padding: 20px;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .modal h2 { color: #d4af37; margin-bottom: 12px; font-size: 1.2rem; border-bottom: 1px solid #524434; padding-bottom: 5px; }
+        .modal input, .modal textarea {
+            width: 100%;
+            background: #1a1612;
+            border: 1px solid #8b5a2b;
+            color: #f4e8c1;
+            padding: 8px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        .modal-buttons { display: flex; justify-content: space-between; margin-top: 5px; }
+        .btn-danger { background: #8b2b2b; border-color: #a53a3a; color: #fff; }
+        .btn-danger:hover { background: #a53a3a; }
+
+        .instructions {
+            position: absolute;
+            bottom: 15px; left: 15px;
+            z-index: 100;
+            background: rgba(30, 25, 20, 0.85);
+            padding: 8px 14px;
+            border-radius: 4px;
             font-size: 0.85rem;
-            color: #e0d5c1;
+            border: 1px solid #8b5a2b;
+            pointer-events: none;
+            color: #d4af37;
         }
     </style>
 </head>
@@ -72,81 +128,211 @@
 
     <header>
         <h1>LA MAPPA DEL TESORO</h1>
-        <p>Mappa interattiva dei ritrovamenti — Clicca in un punto qualsiasi della mappa per aggiungere un nuovo tesoro!</p>
+        <div class="controls">
+            <button onclick="zoomIn()">Zoom +</button>
+            <button onclick="zoomOut()">Zoom -</button>
+            <button onclick="resetView()">Reset</button>
+        </div>
     </header>
 
-    <div id="map-container">
-        <div id="map"></div>
+    <div class="instructions">
+        🔍 Trascina per spostarti | Rotella per Zoom | Clicca sulla mappa per aggiungere un tesoro
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="[suspicious link removed]"></script>
+    <div id="viewport">
+        <div id="map-container">
+            <img id="map-img" src="mappa_REd.jpg" alt="Mappa del Tesoro" onload="initMap()">
+            <div id="markers-layer"></div>
+        </div>
+    </div>
+
+    <!-- Modale Inserimento/Modifica -->
+    <div id="marker-modal" class="modal">
+        <h2 id="modal-title">Dettagli Tesoro</h2>
+        <input type="text" id="point-title" placeholder="Nome del punto/tesoro">
+        <textarea id="point-desc" rows="3" placeholder="Fonti o note sul punto..."></textarea>
+        <div class="modal-buttons">
+            <button class="btn-danger" id="btn-delete" onclick="deleteCurrentMarker()">Elimina</button>
+            <div>
+                <button onclick="closeModal()">Annulla</button>
+                <button onclick="saveMarker()">Salva</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Dimensioni reali dell'immagine mappa_REd.jpg (628x488 px)
-        const imgWidth = 628;
-        const imgHeight = 488;
-        const bounds = [, [imgHeight, imgWidth]];
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+        let activeMarkerIndex = null;
+        let pendingClickPos = null;
 
-        // Inizializzazione della mappa con CRS.Simple per immagini personalizzate
-        const map = L.map('map', {
-            crs: L.CRS.Simple,
-            minZoom: -1,
-            maxZoom: 3,
-            maxBounds: bounds,
-            maxBoundsViscosity: 0.8
-        });
+        const viewport = document.getElementById('viewport');
+        const container = document.getElementById('map-container');
+        const markersLayer = document.getElementById('markers-layer');
 
-        // Caricamento dell'immagine base mappa_REd.jpg
-        const image = L.imageOverlay('mappa_REd.jpg', bounds).addTo(map);
-        map.fitBounds(bounds);
-
-        // Icona personalizzata per i tesori
-        const treasureIcon = L.icon({
-            iconUrl: '[suspicious link removed]',
-            shadowUrl: '[suspicious link removed]',
-            iconSize: [2, 3],
-            iconAnchor: [3, 4],
-            popupAnchor: [1, -34],
-            shadowSize: [3]
-        });
-
-        // Lista dei punti del tesoro ricavati dalle fonti
-        const initialPoints = [
-            { name: "Nekoti Rock / Cochinay", y: 298, x: 220, sources: "Fonti 10.png, 45.png" },
-            { name: "Upper Montana River / Fort Riggs", y: 238, x: 260, sources: "Fonti 1_1.png, 2.png, 39.jpg, 45.png" },
-            { name: "Riggs Station / Lone Mule Stead", y: 233, x: 310, sources: "Fonti 11.png, 12.png, 13.png, 14.png, 42.png, 44.png, 46.jpg, 47.jpg, 49.jpg" },
-            { name: "Bard's Crossing / Dakota River", y: 238, x: 345, sources: "Fonti 15.png, 16.png, 21.png, 48.jpg" },
-            { name: "Painted Sky / Limpany", y: 273, x: 365, sources: "Fonti 17.png, 18.png, 19.png, 20.png, 35.png" },
-            { name: "Flatneck Station / Gill Landing", y: 208, x: 355, sources: "Fonti 22.png, 23.png, 24.png, 25.png, 43.png" },
-            { name: "Heartlands / Citadel Rock / Oil Derrick", y: 303, x: 390, sources: "Fonti 32.png, 33.png, 34.png" },
-            { name: "Scarlett Meadows / Eris Field", y: 213, x: 440, sources: "Fonti 26.png, 27.png, 28.png, 38.png" },
-            { name: "Bluewater Marsh / Lagras", y: 253, x: 510, sources: "Fonti 29.png, 30.png, 31.png, 37.png, 41.png" },
-            { name: "Great Plains / Quaker's Cove", y: 178, x: 280, sources: "Fonti 3.png, 4.png, 5.png, 6.png, 7.png, 40.jpg" },
-            { name: "Tall Trees / Lower Montana River", y: 158, x: 230, sources: "Fonti 8.png, 9.png" }
+        // Punti iniziali dalle fonti
+        let points = [
+            { id: 1, x: 220, y: 298, name: "Nekoti Rock / Cochinay", desc: "Fonti 10.png, 45.png" },
+            { id: 2, x: 260, y: 238, name: "Upper Montana River / Fort Riggs", desc: "Fonti 1_1.png, 2.png, 39.jpg, 45.png" },
+            { id: 3, x: 310, y: 233, name: "Riggs Station / Lone Mule Stead", desc: "Fonti 11.png, 12.png, 13.png, 14.png, 42.png, 44.png, 46.jpg, 47.jpg, 49.jpg" },
+            { id: 4, x: 345, y: 238, name: "Bard's Crossing / Dakota River", desc: "Fonti 15.png, 16.png, 21.png, 48.jpg" },
+            { id: 5, x: 365, y: 273, name: "Painted Sky / Limpany", desc: "Fonti 17.png, 18.png, 19.png, 20.png, 35.png" },
+            { id: 6, x: 355, y: 208, name: "Flatneck Station / Gill Landing", desc: "Fonti 22.png, 23.png, 24.png, 25.png, 43.png" },
+            { id: 7, x: 390, y: 303, name: "Heartlands / Citadel Rock", desc: "Fonti 32.png, 33.png, 34.png" },
+            { id: 8, x: 440, y: 213, name: "Scarlett Meadows / Eris Field", desc: "Fonti 26.png, 27.png, 28.png, 38.png" },
+            { id: 9, x: 510, y: 253, name: "Bluewater Marsh / Lagras", desc: "Fonti 29.png, 30.png, 31.png, 37.png, 41.png" },
+            { id: 10, x: 280, y: 178, name: "Great Plains / Quaker's Cove", desc: "Fonti 3.png, 4.png, 5.png, 6.png, 7.png, 40.jpg" },
+            { id: 11, x: 230, y: 158, name: "Tall Trees / Lower Montana River", desc: "Fonti 8.png, 9.png" }
         ];
 
-        // Aggiunta dei punti iniziali sulla mappa
-        initialPoints.forEach(pt => {
-            L.marker([pt.y, pt.x], { icon: treasureIcon })
-                .addTo(map)
-                .bindPopup(`<div class="popup-title">${pt.name}</div><div class="popup-desc">Identificato da: ${pt.sources}</div>`);
+        // Recupera eventuali modifiche salvate localmente
+        const saved = localStorage.getItem('mappa_tesori_points');
+        if (saved) {
+            try { points = JSON.parse(saved); } catch(e){}
+        }
+
+        function initMap() {
+            resetView();
+            renderMarkers();
+        }
+
+        function updateTransform() {
+            container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        function zoomIn() {
+            scale = Math.min(scale * 1.3, 5);
+            updateTransform();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale / 1.3, 0.4);
+            updateTransform();
+        }
+
+        function resetView() {
+            const img = document.getElementById('map-img');
+            scale = Math.min(window.innerWidth / img.naturalWidth, window.innerHeight / img.naturalHeight) * 0.95;
+            if(!scale || isNaN(scale)) scale = 1.2;
+            panX = (window.innerWidth - img.naturalWidth * scale) / 2;
+            panY = (window.innerHeight - img.naturalHeight * scale) / 2;
+            updateTransform();
+        }
+
+        // Gestione Drag
+        viewport.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('marker') || e.target.closest('.modal')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
         });
 
-        // Funzionalità per inserire nuovi punti cliccando sulla mappa
-        map.on('click', function(e) {
-            const y = Math.round(e.latlng.lat);
-            const x = Math.round(e.latlng.lng);
-            
-            const title = prompt(`Aggiungi un nuovo punto del tesoro alle coordinate (X: ${x}, Y: ${y}):\nNome del tesoro/luogo:`);
-            if (title) {
-                const desc = prompt("Inserisci una descrizione o una nota sul ritrovamento:") || "Nessuna nota aggiuntiva.";
-                
-                L.marker([y, x], { icon: treasureIcon })
-                    .addTo(map)
-                    .bindPopup(`<div class="popup-title">${title}</div><div class="popup-desc">${desc}<br><small>(X: ${x}, Y: ${y})</small></div>`)
-                    .openPopup();
-            }
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
         });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Zoom con Rotella Mouse
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+            const newScale = Math.min(Math.max(0.4, scale * zoomFactor), 6);
+            
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+
+            updateTransform();
+        }, { passive: false });
+
+        // Inserimento nuovi punti
+        viewport.addEventListener('click', (e) => {
+            if (e.target.classList.contains('marker') || e.target.closest('.modal') || e.target.closest('header')) return;
+            
+            const rect = container.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) / scale;
+            const clickY = (e.clientY - rect.top) / scale;
+
+            pendingClickPos = { x: Math.round(clickX), y: Math.round(clickY) };
+            activeMarkerIndex = null;
+
+            document.getElementById('modal-title').innerText = "Nuovo Tesoro";
+            document.getElementById('point-title').value = "";
+            document.getElementById('point-desc').value = "";
+            document.getElementById('btn-delete').style.display = "none";
+            document.getElementById('marker-modal').style.display = "block";
+        });
+
+        function renderMarkers() {
+            markersLayer.innerHTML = '';
+            points.forEach((pt, index) => {
+                const el = document.createElement('div');
+                el.className = 'marker';
+                el.style.left = `${pt.x}px`;
+                el.style.top = `${pt.y}px`;
+                el.title = pt.name;
+                
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    activeMarkerIndex = index;
+                    document.getElementById('modal-title').innerText = "Dettagli / Modifica Tesoro";
+                    document.getElementById('point-title').value = pt.name;
+                    document.getElementById('point-desc').value = pt.desc || "";
+                    document.getElementById('btn-delete').style.display = "block";
+                    document.getElementById('marker-modal').style.display = "block";
+                });
+
+                markersLayer.appendChild(el);
+            });
+        }
+
+        function saveMarker() {
+            const name = document.getElementById('point-title').value.trim() || "Tesoro Senza Nome";
+            const desc = document.getElementById('point-desc').value.trim();
+
+            if (activeMarkerIndex !== null) {
+                points[activeMarkerIndex].name = name;
+                points[activeMarkerIndex].desc = desc;
+            } else if (pendingClickPos) {
+                points.push({
+                    id: Date.now(),
+                    x: pendingClickPos.x,
+                    y: pendingClickPos.y,
+                    name: name,
+                    desc: desc
+                });
+            }
+
+            localStorage.setItem('mappa_tesori_points', JSON.stringify(points));
+            renderMarkers();
+            closeModal();
+        }
+
+        function deleteCurrentMarker() {
+            if (activeMarkerIndex !== null) {
+                points.splice(activeMarkerIndex, 1);
+                localStorage.setItem('mappa_tesori_points', JSON.stringify(points));
+                renderMarkers();
+                closeModal();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('marker-modal').style.display = "none";
+            pendingClickPos = null;
+            activeMarkerIndex = null;
+        }
     </script>
 </body>
 </html>
