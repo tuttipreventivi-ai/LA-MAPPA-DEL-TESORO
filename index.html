@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LA MAPPA DEL TESORO</title>
+    <!-- Leaflet CSS per la gestione della mappa interattiva -->
+    <link rel="stylesheet" href="[suspicious link removed]" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #1e1b18;
+            color: #f4e8c1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #2b251f;
+            padding: 15px 20px;
+            text-align: center;
+            border-bottom: 2px solid #8b5a2b;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        header h1 {
+            font-size: 2rem;
+            letter-spacing: 3px;
+            color: #d4af37;
+            text-shadow: 2px 2px 4px #000;
+        }
+        header p {
+            font-size: 0.9rem;
+            color: #c5b39b;
+            margin-top: 5px;
+        }
+        #map-container {
+            flex: 1;
+            width: 100%;
+            background-color: #12100e;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .leaflet-popup-content-wrapper {
+            background-color: #2b251f;
+            color: #f4e8c1;
+            border: 1px solid #8b5a2b;
+            border-radius: 6px;
+        }
+        .leaflet-popup-tip {
+            background-color: #2b251f;
+        }
+        .popup-title {
+            font-weight: bold;
+            color: #d4af37;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        .popup-desc {
+            font-size: 0.85rem;
+            color: #e0d5c1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>LA MAPPA DEL TESORO</h1>
+        <p>Mappa interattiva dei ritrovamenti — Clicca in un punto qualsiasi della mappa per aggiungere un nuovo tesoro!</p>
+    </header>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="[suspicious link removed]"></script>
+    <script>
+        // Dimensioni reali dell'immagine mappa_REd.jpg (628x488 px)
+        const imgWidth = 628;
+        const imgHeight = 488;
+        const bounds = [, [imgHeight, imgWidth]];
+
+        // Inizializzazione della mappa con CRS.Simple per immagini personalizzate
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -1,
+            maxZoom: 3,
+            maxBounds: bounds,
+            maxBoundsViscosity: 0.8
+        });
+
+        // Caricamento dell'immagine base mappa_REd.jpg
+        const image = L.imageOverlay('mappa_REd.jpg', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Icona personalizzata per i tesori
+        const treasureIcon = L.icon({
+            iconUrl: '[suspicious link removed]',
+            shadowUrl: '[suspicious link removed]',
+            iconSize: [2, 3],
+            iconAnchor: [3, 4],
+            popupAnchor: [1, -34],
+            shadowSize: [3]
+        });
+
+        // Lista dei punti del tesoro ricavati dalle fonti
+        const initialPoints = [
+            { name: "Nekoti Rock / Cochinay", y: 298, x: 220, sources: "Fonti 10.png, 45.png" },
+            { name: "Upper Montana River / Fort Riggs", y: 238, x: 260, sources: "Fonti 1_1.png, 2.png, 39.jpg, 45.png" },
+            { name: "Riggs Station / Lone Mule Stead", y: 233, x: 310, sources: "Fonti 11.png, 12.png, 13.png, 14.png, 42.png, 44.png, 46.jpg, 47.jpg, 49.jpg" },
+            { name: "Bard's Crossing / Dakota River", y: 238, x: 345, sources: "Fonti 15.png, 16.png, 21.png, 48.jpg" },
+            { name: "Painted Sky / Limpany", y: 273, x: 365, sources: "Fonti 17.png, 18.png, 19.png, 20.png, 35.png" },
+            { name: "Flatneck Station / Gill Landing", y: 208, x: 355, sources: "Fonti 22.png, 23.png, 24.png, 25.png, 43.png" },
+            { name: "Heartlands / Citadel Rock / Oil Derrick", y: 303, x: 390, sources: "Fonti 32.png, 33.png, 34.png" },
+            { name: "Scarlett Meadows / Eris Field", y: 213, x: 440, sources: "Fonti 26.png, 27.png, 28.png, 38.png" },
+            { name: "Bluewater Marsh / Lagras", y: 253, x: 510, sources: "Fonti 29.png, 30.png, 31.png, 37.png, 41.png" },
+            { name: "Great Plains / Quaker's Cove", y: 178, x: 280, sources: "Fonti 3.png, 4.png, 5.png, 6.png, 7.png, 40.jpg" },
+            { name: "Tall Trees / Lower Montana River", y: 158, x: 230, sources: "Fonti 8.png, 9.png" }
+        ];
+
+        // Aggiunta dei punti iniziali sulla mappa
+        initialPoints.forEach(pt => {
+            L.marker([pt.y, pt.x], { icon: treasureIcon })
+                .addTo(map)
+                .bindPopup(`<div class="popup-title">${pt.name}</div><div class="popup-desc">Identificato da: ${pt.sources}</div>`);
+        });
+
+        // Funzionalità per inserire nuovi punti cliccando sulla mappa
+        map.on('click', function(e) {
+            const y = Math.round(e.latlng.lat);
+            const x = Math.round(e.latlng.lng);
+            
+            const title = prompt(`Aggiungi un nuovo punto del tesoro alle coordinate (X: ${x}, Y: ${y}):\nNome del tesoro/luogo:`);
+            if (title) {
+                const desc = prompt("Inserisci una descrizione o una nota sul ritrovamento:") || "Nessuna nota aggiuntiva.";
+                
+                L.marker([y, x], { icon: treasureIcon })
+                    .addTo(map)
+                    .bindPopup(`<div class="popup-title">${title}</div><div class="popup-desc">${desc}<br><small>(X: ${x}, Y: ${y})</small></div>`)
+                    .openPopup();
+            }
+        });
+    </script>
+</body>
+</html>
