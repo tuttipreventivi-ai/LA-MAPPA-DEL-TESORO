@@ -1,337 +1,817 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LA MAPPA DEL TESORO</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Georgia', serif; background-color: #12100e; color: #f4e8c1; }
-        
-        /* Intestazione overlay */
-        header {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            z-index: 100;
-            background: rgba(30, 25, 20, 0.88);
-            backdrop-filter: blur(5px);
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #8b5a2b;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    <title>RDR2 Interactive Frontier Map</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Western/Frontier Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Cinzel:wght@400;600;700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rdr: {
+                            red: '#990000',
+                            brightRed: '#CC0000',
+                            darkRed: '#500000',
+                            gold: '#D4AF37',
+                            goldHover: '#f3c83c',
+                            parchment: '#E8D8B8',
+                            darkParchment: '#2B241A',
+                            paper: '#1F1913',
+                            border: '#8B5A2B',
+                            brass: '#B8860B'
+                        }
+                    },
+                    fontFamily: {
+                        rye: ['Rye', 'cursive'],
+                        cinzel: ['Cinzel', 'serif'],
+                        fell: ['IM Fell English', 'serif']
+                    }
+                }
+            }
         }
-        h1 { font-size: 1.5rem; color: #d4af37; text-shadow: 1px 1px 3px #000; letter-spacing: 2px; }
-        .controls { display: flex; gap: 10px; align-items: center; }
-        button {
-            background: #3a3025;
-            color: #d4af37;
-            border: 1px solid #8b5a2b;
-            padding: 6px 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-        button:hover { background: #524434; color: #fff; }
-        
-        /* Area Visualizzazione Mappa */
-        #viewport {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            cursor: grab;
-            overflow: hidden;
-            background: #1a1612;
-        }
-        #viewport:active { cursor: grabbing; }
+    </script>
 
-        #map-container {
-            position: absolute;
-            transform-origin: 0 0;
+    <style>
+        /* Custom Western Aesthetic CSS & Scrollbars */
+        body {
+            background-color: #0f0c08;
+            color: #E8D8B8;
+            font-family: 'IM Fell English', serif;
+            overflow: hidden;
             user-select: none;
         }
 
-        #map-img {
+        /* Parchment Texture Overlay & Map Canvas Styling */
+        #map-wrapper {
+            cursor: grab;
+            background-color: #1a1612;
+            background-image: 
+                radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%),
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 2px);
+        }
+
+        #map-wrapper:active {
+            cursor: grabbing;
+        }
+
+        .map-grid {
+            background-size: 100px 100px;
+            background-image: 
+                linear-gradient(to right, rgba(212, 175, 55, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(212, 175, 55, 0.05) 1px, transparent 1px);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #14100c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8B5A2B;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #D4AF37;
+        }
+
+        /* Marker pulse effect */
+        @keyframes pulse-gold {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); }
+            70% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+        }
+
+        .marker-active {
+            animation: pulse-gold 2s infinite;
+            z-index: 40 !important;
+        }
+
+        /* Vintage Border FX */
+        .vintage-border {
+            border: 2px solid #8B5A2B;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .vintage-box {
+            background: linear-gradient(135deg, #2B241A 0%, #1A150F 100%);
+            border: 1px solid #5C3A1E;
+        }
+
+        /* Custom Tooltip Arrow */
+        .popover-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: #2B241A transparent;
             display: block;
-            pointer-events: none;
-            max-width: none;
-        }
-
-        /* Marker dei Tesori */
-        .marker {
-            position: absolute;
-            width: 22px;
-            height: 22px;
-            background: radial-gradient(circle, #ffea00 0%, #d4af37 60%, #8b5a2b 100%);
-            border: 2px solid #ffffff;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(255, 234, 0, 0.8), 0 2px 5px rgba(0,0,0,0.8);
-            z-index: 10;
-            transition: transform 0.15s ease;
-        }
-        .marker:hover {
-            transform: translate(-50%, -50%) scale(1.35);
-            z-index: 20;
-            background: #ffffff;
-            border-color: #ffd700;
-        }
-
-        /* Finestra Modale per Dettagli/Inserimento */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 200;
-            background: #2b251f;
-            border: 2px solid #8b5a2b;
-            border-radius: 8px;
-            padding: 20px;
-            width: 320px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-        .modal h2 { color: #d4af37; margin-bottom: 12px; font-size: 1.2rem; border-bottom: 1px solid #524434; padding-bottom: 5px; }
-        .modal input, .modal textarea {
-            width: 100%;
-            background: #1a1612;
-            border: 1px solid #8b5a2b;
-            color: #f4e8c1;
-            padding: 8px;
-            margin-bottom: 12px;
-            border-radius: 4px;
-            font-family: inherit;
-        }
-        .modal-buttons { display: flex; justify-content: space-between; margin-top: 5px; }
-        .btn-danger { background: #8b2b2b; border-color: #a53a3a; color: #fff; }
-        .btn-danger:hover { background: #a53a3a; }
-
-        .instructions {
-            position: absolute;
-            bottom: 15px; left: 15px;
-            z-index: 100;
-            background: rgba(30, 25, 20, 0.85);
-            padding: 8px 14px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            border: 1px solid #8b5a2b;
-            pointer-events: none;
-            color: #d4af37;
+            width: 0;
         }
     </style>
 </head>
-<body>
+<body class="h-screen w-screen flex flex-col antialiased">
 
-    <header>
-        <h1>LA MAPPA DEL TESORO</h1>
-        <div class="controls">
-            <button onclick="zoomIn()">Zoom +</button>
-            <button onclick="zoomOut()">Zoom -</button>
-            <button onclick="resetView()">Reset</button>
+    <!-- Top Header Bar -->
+    <header class="h-16 bg-rdr-paper border-b-2 border-rdr-border flex items-center justify-between px-4 sm:px-6 z-20 shadow-2xl relative">
+        <div class="flex items-center space-x-3">
+            <button id="toggle-sidebar-btn" class="p-2 bg-rdr-darkParchment border border-rdr-border hover:border-rdr-gold text-rdr-gold rounded transition hover:bg-rdr-border/30">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-compass text-rdr-brightRed text-2xl animate-pulse"></i>
+                <h1 class="font-rye text-lg sm:text-2xl text-rdr-gold tracking-wider uppercase text-shadow">Red Dead Redemption 2</h1>
+                <span class="hidden md:inline-block font-cinzel text-xs text-rdr-parchment/70 bg-rdr-darkRed/50 px-2 py-0.5 border border-rdr-red rounded">Interactive Map</span>
+            </div>
+        </div>
+
+        <!-- Quick Filter & Action Controls -->
+        <div class="flex items-center space-x-2 sm:space-x-4">
+            <!-- Search Bar -->
+            <div class="relative w-36 sm:w-64">
+                <input type="text" id="map-search" placeholder="Search waypoints..." 
+                    class="w-full pl-8 pr-3 py-1.5 bg-rdr-darkParchment border border-rdr-border focus:border-rdr-gold text-sm text-rdr-parchment placeholder-rdr-parchment/40 rounded focus:outline-none transition">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-rdr-gold/70"></i>
+            </div>
+
+            <!-- Import / Export Buttons -->
+            <button id="export-btn" title="Export Waypoints (JSON)" class="px-3 py-1.5 bg-rdr-darkParchment border border-rdr-border hover:border-rdr-gold text-rdr-parchment text-xs sm:text-sm font-cinzel rounded flex items-center space-x-1 hover:text-rdr-gold transition">
+                <i class="fa-solid fa-download"></i>
+                <span class="hidden lg:inline">Export</span>
+            </button>
+            <button id="import-btn" title="Import Waypoints (JSON)" class="px-3 py-1.5 bg-rdr-darkParchment border border-rdr-border hover:border-rdr-gold text-rdr-parchment text-xs sm:text-sm font-cinzel rounded flex items-center space-x-1 hover:text-rdr-gold transition">
+                <i class="fa-solid fa-upload"></i>
+                <span class="hidden lg:inline">Import</span>
+            </button>
+            <input type="file" id="import-file-input" accept=".json" class="hidden">
         </div>
     </header>
 
-    <div class="instructions">
-        🔍 Trascina per spostarti | Rotella per Zoom | Clicca sulla mappa per aggiungere un tesoro
+    <!-- Main Content Layout -->
+    <div class="flex-1 flex relative overflow-hidden">
+
+        <!-- Collapsible Left Sidebar -->
+        <aside id="sidebar" class="w-80 sm:w-96 bg-rdr-paper border-r-2 border-rdr-border flex flex-col z-20 transition-all duration-300 transform translate-x-0 absolute sm:relative h-full shadow-2xl">
+            <!-- Sidebar Top Filters -->
+            <div class="p-4 border-b border-rdr-border/50 bg-rdr-darkParchment/40">
+                <h2 class="font-cinzel font-bold text-rdr-gold uppercase tracking-widest text-sm mb-3 flex justify-between items-center">
+                    <span>Filter Categories</span>
+                    <span id="active-count-badge" class="text-xs font-normal text-rdr-parchment/60 bg-black/40 px-2 py-0.5 rounded border border-rdr-border/40">5 Saved</span>
+                </h2>
+                
+                <!-- Category Badges / Filters -->
+                <div id="category-filters" class="flex flex-wrap gap-1.5">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+            <!-- Waypoint List -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="poi-list-container">
+                <!-- POI Items Rendered Here -->
+            </div>
+
+            <!-- Sidebar Footer Instructions -->
+            <div class="p-3 bg-rdr-darkParchment border-t border-rdr-border/50 text-xs text-rdr-parchment/70 flex items-center space-x-2">
+                <i class="fa-solid fa-circle-info text-rdr-gold text-base"></i>
+                <span>Click anywhere on the map to plant a custom marker.</span>
+            </div>
+        </aside>
+
+        <!-- Map Container Window -->
+        <main class="flex-1 relative overflow-hidden bg-black" id="map-viewport">
+
+            <!-- Zoom & Pan Map Controls (Floating Overlay) -->
+            <div class="absolute top-4 right-4 z-10 flex flex-col space-y-2 bg-rdr-paper/90 border border-rdr-border p-1.5 rounded shadow-2xl backdrop-blur-sm">
+                <button id="zoom-in" title="Zoom In" class="w-9 h-9 bg-rdr-darkParchment hover:bg-rdr-border/50 text-rdr-gold rounded border border-rdr-border flex items-center justify-center font-bold transition">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <button id="zoom-out" title="Zoom Out" class="w-9 h-9 bg-rdr-darkParchment hover:bg-rdr-border/50 text-rdr-gold rounded border border-rdr-border flex items-center justify-center font-bold transition">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <button id="zoom-reset" title="Reset Camera View" class="w-9 h-9 bg-rdr-darkParchment hover:bg-rdr-border/50 text-rdr-gold rounded border border-rdr-border flex items-center justify-center transition">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            </div>
+
+            <!-- Coordinates & Legend Display -->
+            <div class="absolute bottom-4 right-4 z-10 bg-rdr-paper/90 border border-rdr-border px-3 py-1.5 rounded text-xs text-rdr-parchment/80 font-mono shadow-lg flex items-center space-x-4">
+                <div><span class="text-rdr-gold">X:</span> <span id="coord-x">0</span></div>
+                <div><span class="text-rdr-gold">Y:</span> <span id="coord-y">0</span></div>
+                <div><span class="text-rdr-gold">Zoom:</span> <span id="zoom-level">100%</span></div>
+            </div>
+
+            <!-- Transformable Map Surface -->
+            <div id="map-wrapper" class="absolute w-[3000px] h-[2000px] origin-0 transform-gpu map-grid">
+                
+                <!-- Map Background Image (Authentic Topographic High-Res RDR2 Frontier Canvas Overlay) -->
+                <div class="absolute inset-0 opacity-85 pointer-events-none">
+                    <img src="https://images.unsplash.com/photo-1524654458049-e36be0721fa2?q=80&w=3000&auto=format&fit=crop" 
+                         alt="RDR2 Topographic Map Background" 
+                         class="w-full h-full object-cover filter contrast-125 sepia-[0.35] brightness-90 hue-rotate-[-10deg]"
+                         onerror="this.style.display='none'">
+                    
+                    <!-- SVG Overlay for Realistic Frontier Topography, Rivers & Region Labels -->
+                    <svg class="absolute inset-0 w-full h-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                        <filter id="paper-texture">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
+                            <feDiffuseLighting in="noise" lighting-color="#fff" surfaceScale="2">
+                                <feDistantLight azimuth="45" elevation="60" />
+                            </feDiffuseLighting>
+                            <feBlend mode="multiply" in="SourceGraphic" result="blend" />
+                        </filter>
+                        
+                        <!-- Topographical Contour Lines simulation -->
+                        <g stroke="#8B5A2B" stroke-width="1.5" fill="none" opacity="0.4">
+                            <path d="M 100 300 Q 400 100 800 400 T 1500 300 T 2200 600" />
+                            <path d="M 150 350 Q 450 150 850 450 T 1550 350 T 2250 650" />
+                            <path d="M 300 800 Q 700 500 1200 900 T 2000 800" />
+                            <path d="M 600 1200 Q 1100 900 1600 1300 T 2600 1100" />
+                            <!-- River Lannahechee Mock -->
+                            <path d="M 200 1800 Q 800 1400 1400 1500 T 2500 1800" stroke="#2B5B84" stroke-width="12" opacity="0.6" />
+                        </g>
+
+                        <!-- Region Name Watermarks -->
+                        <text x="450" y="350" font-family="Rye" font-size="48" fill="#7A0000" opacity="0.25" letter-spacing="10">AMBARINO</text>
+                        <text x="500" y="850" font-family="Rye" font-size="52" fill="#7A0000" opacity="0.25" letter-spacing="12">NEW HANOVER</text>
+                        <text x="1700" y="1100" font-family="Rye" font-size="52" fill="#7A0000" opacity="0.25" letter-spacing="12">LEMOYNE</text>
+                        <text x="1100" y="1250" font-family="Rye" font-size="44" fill="#7A0000" opacity="0.25" letter-spacing="8">WEST ELIZABETH</text>
+                        <text x="350" y="1550" font-family="Rye" font-size="56" fill="#7A0000" opacity="0.25" letter-spacing="14">NEW AUSTIN</text>
+                    </svg>
+                </div>
+
+                <!-- Dynamic Waypoint Markers Layer -->
+                <div id="markers-layer" class="absolute inset-0 pointer-events-auto"></div>
+            </div>
+
+        </main>
     </div>
 
-    <div id="viewport">
-        <div id="map-container">
-            <img id="map-img" src="mappa_REd.jpg" alt="Mappa del Tesoro" onload="initMap()">
-            <div id="markers-layer"></div>
+    <!-- POI Modal Window (Add / Edit Marker) -->
+    <div id="poi-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+        <div class="vintage-box vintage-border w-full max-w-md rounded-lg p-6 relative shadow-2xl animate-fade-in">
+            <button id="close-modal-btn" class="absolute top-3 right-3 text-rdr-parchment/60 hover:text-rdr-gold text-lg transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h3 id="modal-title" class="font-rye text-xl text-rdr-gold uppercase tracking-wider mb-4 border-b border-rdr-border/50 pb-2 flex items-center space-x-2">
+                <i class="fa-solid fa-location-dot text-rdr-brightRed"></i>
+                <span>Add Waypoint</span>
+            </h3>
+
+            <form id="poi-form" class="space-y-4">
+                <input type="hidden" id="poi-id">
+                <input type="hidden" id="poi-x">
+                <input type="hidden" id="poi-y">
+
+                <div>
+                    <label class="block font-cinzel text-xs uppercase text-rdr-gold mb-1">Title / Location Name</label>
+                    <input type="text" id="poi-name" required placeholder="e.g., Hidden Stash, Legendary Bear..." 
+                           class="w-full bg-rdr-paper border border-rdr-border focus:border-rdr-gold rounded px-3 py-2 text-sm text-rdr-parchment focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-cinzel text-xs uppercase text-rdr-gold mb-1">Category</label>
+                    <select id="poi-category" class="w-full bg-rdr-paper border border-rdr-border focus:border-rdr-gold rounded px-3 py-2 text-sm text-rdr-parchment focus:outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-cinzel text-xs uppercase text-rdr-gold mb-1">Description / Notes</label>
+                    <textarea id="poi-desc" rows="3" placeholder="Add detailed notes, coordinates, tips or loot list..." 
+                              class="w-full bg-rdr-paper border border-rdr-border focus:border-rdr-gold rounded px-3 py-2 text-sm text-rdr-parchment focus:outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-3 border-t border-rdr-border/40">
+                    <button type="button" id="cancel-modal-btn" class="px-4 py-2 bg-rdr-darkParchment hover:bg-rdr-border/40 text-rdr-parchment rounded text-sm font-cinzel transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-rdr-red hover:bg-rdr-brightRed text-white rounded text-sm font-cinzel uppercase tracking-wider font-bold transition shadow-md">Save Waypoint</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Modale Inserimento/Modifica -->
-    <div id="marker-modal" class="modal">
-        <h2 id="modal-title">Dettagli Tesoro</h2>
-        <input type="text" id="point-title" placeholder="Nome del punto/tesoro">
-        <textarea id="point-desc" rows="3" placeholder="Fonti o note sul punto..."></textarea>
-        <div class="modal-buttons">
-            <button class="btn-danger" id="btn-delete" onclick="deleteCurrentMarker()">Elimina</button>
-            <div>
-                <button onclick="closeModal()">Annulla</button>
-                <button onclick="saveMarker()">Salva</button>
+    <!-- POI Detail Popup Card (Floating Map Inspector) -->
+    <div id="poi-card" class="fixed z-40 bg-rdr-paper border-2 border-rdr-gold rounded-lg shadow-2xl p-4 w-72 hidden text-rdr-parchment popover-arrow">
+        <div class="flex justify-between items-start border-b border-rdr-border/50 pb-2 mb-2">
+            <div class="flex items-center space-x-2">
+                <div id="card-icon" class="w-7 h-7 rounded flex items-center justify-center text-white text-xs"></div>
+                <div>
+                    <h4 id="card-title" class="font-rye text-sm text-rdr-gold leading-tight"></h4>
+                    <span id="card-category" class="text-[10px] font-cinzel text-rdr-parchment/60 uppercase"></span>
+                </div>
+            </div>
+            <button id="close-card-btn" class="text-rdr-parchment/50 hover:text-rdr-gold text-xs">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <p id="card-desc" class="text-xs text-rdr-parchment/90 mb-3 italic leading-relaxed max-h-28 overflow-y-auto"></p>
+
+        <div class="flex justify-between items-center pt-2 border-t border-rdr-border/40 text-xs">
+            <span class="text-[10px] font-mono text-rdr-parchment/50" id="card-coords"></span>
+            <div class="flex space-x-2">
+                <button id="edit-card-btn" class="px-2 py-1 bg-rdr-darkParchment hover:bg-rdr-border/40 border border-rdr-border text-rdr-gold rounded transition">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                </button>
+                <button id="delete-card-btn" class="px-2 py-1 bg-rdr-darkRed hover:bg-rdr-red text-white rounded transition">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- Application Script Engine -->
     <script>
-        let scale = 1;
-        let panX = 0;
-        let panY = 0;
-        let isDragging = false;
-        let startX, startY;
-        let activeMarkerIndex = null;
-        let pendingClickPos = null;
+        // Category Configurations (Icons, Colors & Styling)
+        const CATEGORIES = {
+            town: { name: 'Town / Settlement', icon: 'fa-city', color: '#D4AF37', bg: '#8B6508' },
+            treasure: { name: 'Treasure / Stash', icon: 'fa-gem', color: '#FFD700', bg: '#B8860B' },
+            hunting: { name: 'Hunting / Animals', icon: 'fa-paw', color: '#2E8B57', bg: '#1E5631' },
+            hideout: { name: 'Gang Hideout', icon: 'fa-skull', color: '#DC143C', bg: '#8B0000' },
+            fast_travel: { name: 'Fast Travel / Stage', icon: 'fa-horse-head', color: '#1E90FF', bg: '#004080' },
+            easter_egg: { name: 'Mystery / Secrets', icon: 'fa-mask', color: '#9370DB', bg: '#4B0082' },
+            personal: { name: 'Personal Note', icon: 'fa-map-pin', color: '#FF7F50', bg: '#C0392B' }
+        };
 
-        const viewport = document.getElementById('viewport');
-        const container = document.getElementById('map-container');
-        const markersLayer = document.getElementById('markers-layer');
-
-        // Punti iniziali dalle fonti
-        let points = [
-            { id: 1, x: 220, y: 298, name: "Nekoti Rock / Cochinay", desc: "Fonti 10.png, 45.png" },
-            { id: 2, x: 260, y: 238, name: "Upper Montana River / Fort Riggs", desc: "Fonti 1_1.png, 2.png, 39.jpg, 45.png" },
-            { id: 3, x: 310, y: 233, name: "Riggs Station / Lone Mule Stead", desc: "Fonti 11.png, 12.png, 13.png, 14.png, 42.png, 44.png, 46.jpg, 47.jpg, 49.jpg" },
-            { id: 4, x: 345, y: 238, name: "Bard's Crossing / Dakota River", desc: "Fonti 15.png, 16.png, 21.png, 48.jpg" },
-            { id: 5, x: 365, y: 273, name: "Painted Sky / Limpany", desc: "Fonti 17.png, 18.png, 19.png, 20.png, 35.png" },
-            { id: 6, x: 355, y: 208, name: "Flatneck Station / Gill Landing", desc: "Fonti 22.png, 23.png, 24.png, 25.png, 43.png" },
-            { id: 7, x: 390, y: 303, name: "Heartlands / Citadel Rock", desc: "Fonti 32.png, 33.png, 34.png" },
-            { id: 8, x: 440, y: 213, name: "Scarlett Meadows / Eris Field", desc: "Fonti 26.png, 27.png, 28.png, 38.png" },
-            { id: 9, x: 510, y: 253, name: "Bluewater Marsh / Lagras", desc: "Fonti 29.png, 30.png, 31.png, 37.png, 41.png" },
-            { id: 10, x: 280, y: 178, name: "Great Plains / Quaker's Cove", desc: "Fonti 3.png, 4.png, 5.png, 6.png, 7.png, 40.jpg" },
-            { id: 11, x: 230, y: 158, name: "Tall Trees / Lower Montana River", desc: "Fonti 8.png, 9.png" }
+        // Pre-populated Frontier Samples
+        const SAMPLE_POIS = [
+            { id: '1', name: 'Valentine', category: 'town', desc: 'Heartland livestock town. Famous for its saloon brawls, sheep auctions, and lively atmosphere.', x: 1120, y: 720 },
+            { id: '2', name: 'Saint Denis', category: 'town', desc: 'Bustling industrial hub of Lemoyne. Paved streets, streetcars, high society, and underworld crime.', x: 1950, y: 1220 },
+            { id: '3', name: 'Rhodes', category: 'town', desc: 'Feuding plantation town in Scarlett Meadows dominated by the Gray and Braithwaite families.', x: 1620, y: 1280 },
+            { id: '4', name: 'Blackwater', category: 'town', desc: 'Modernizing port town in West Elizabeth. High security and strict law enforcement presence.', x: 1100, y: 1280 },
+            { id: '5', name: 'Mount Hagen', category: 'town', desc: 'Snow-capped peak in the Grizzly Mountains. Cold weather gear required.', x: 780, y: 480 },
+            { id: '6', name: 'Jack Hall Gang Treasure', category: 'treasure', desc: 'Treasure map stash located on a rocky bluff overlooking the river in New Hanover.', x: 1280, y: 880 },
+            { id: '7', name: 'Legendary Grizzly Bear Spot', category: 'hunting', desc: 'Prime territory for the Legendary Bharati Grizzly Bear in O\'Creagh\'s Run.', x: 1420, y: 520 },
+            { id: '8', name: 'Six Point Cabin (O\'Driscolls)', category: 'hideout', desc: 'O\'Driscoll Boys encampment hidden in the woods north of Valentine.', x: 1180, y: 580 }
         ];
 
-        // Recupera eventuali modifiche salvate localmente
-        const saved = localStorage.getItem('mappa_tesori_points');
-        if (saved) {
-            try { points = JSON.parse(saved); } catch(e){}
-        }
+        // State Management
+        let pois = [];
+        let activeFilter = 'all';
+        let searchQuery = '';
+        let activePoiId = null;
 
-        function initMap() {
-            resetView();
-            renderMarkers();
-        }
+        // Pan-Zoom Engine State
+        const viewport = document.getElementById('map-viewport');
+        const mapWrapper = document.getElementById('map-wrapper');
+        
+        let scale = 0.85;
+        let panX = -300;
+        let panY = -150;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let hasDraggedFar = false;
 
-        function updateTransform() {
-            container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        }
-
-        function zoomIn() {
-            scale = Math.min(scale * 1.3, 5);
-            updateTransform();
-        }
-
-        function zoomOut() {
-            scale = Math.max(scale / 1.3, 0.4);
-            updateTransform();
-        }
-
-        function resetView() {
-            const img = document.getElementById('map-img');
-            scale = Math.min(window.innerWidth / img.naturalWidth, window.innerHeight / img.naturalHeight) * 0.95;
-            if(!scale || isNaN(scale)) scale = 1.2;
-            panX = (window.innerWidth - img.naturalWidth * scale) / 2;
-            panY = (window.innerHeight - img.naturalHeight * scale) / 2;
-            updateTransform();
-        }
-
-        // Gestione Drag
-        viewport.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('marker') || e.target.closest('.modal')) return;
-            isDragging = true;
-            startX = e.clientX - panX;
-            startY = e.clientY - panY;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPois();
+            setupPanZoom();
+            renderCategoryFilters();
+            renderPois();
+            setupEventListeners();
             updateTransform();
         });
 
-        window.addEventListener('mouseup', () => { isDragging = false; });
+        // Load Saved POIs or Initialize Defaults
+        function loadPois() {
+            const stored = localStorage.getItem('rdr2_map_pois');
+            if (stored) {
+                try {
+                    pois = JSON.parse(stored);
+                } catch (e) {
+                    pois = [...SAMPLE_POIS];
+                }
+            } else {
+                pois = [...SAMPLE_POIS];
+                savePois();
+            }
+        }
 
-        // Zoom con Rotella Mouse
-        viewport.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-            const newScale = Math.min(Math.max(0.4, scale * zoomFactor), 6);
-            
-            const rect = viewport.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+        function savePois() {
+            localStorage.setItem('rdr2_map_pois', JSON.stringify(pois));
+            updateActiveCount();
+        }
 
-            panX = mouseX - (mouseX - panX) * (newScale / scale);
-            panY = mouseY - (mouseY - panY) * (newScale / scale);
-            scale = newScale;
+        // Setup Map Canvas Pan & Zoom Controls
+        function setupPanZoom() {
+            // Mouse Wheel Zoom
+            viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 1.12;
+                const rect = viewport.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
 
-            updateTransform();
-        }, { passive: false });
+                // Calculate zoom center point relative to map wrapper
+                const mapMouseX = (mouseX - panX) / scale;
+                const mapMouseY = (mouseY - panY) / scale;
 
-        // Inserimento nuovi punti
-        viewport.addEventListener('click', (e) => {
-            if (e.target.classList.contains('marker') || e.target.closest('.modal') || e.target.closest('header')) return;
-            
-            const rect = container.getBoundingClientRect();
-            const clickX = (e.clientX - rect.left) / scale;
-            const clickY = (e.clientY - rect.top) / scale;
+                if (e.deltaY < 0) {
+                    scale = Math.min(scale * zoomFactor, 2.8);
+                } else {
+                    scale = Math.max(scale / zoomFactor, 0.35);
+                }
 
-            pendingClickPos = { x: Math.round(clickX), y: Math.round(clickY) };
-            activeMarkerIndex = null;
+                panX = mouseX - mapMouseX * scale;
+                panY = mouseY - mapMouseY * scale;
 
-            document.getElementById('modal-title').innerText = "Nuovo Tesoro";
-            document.getElementById('point-title').value = "";
-            document.getElementById('point-desc').value = "";
-            document.getElementById('btn-delete').style.display = "none";
-            document.getElementById('marker-modal').style.display = "block";
-        });
+                updateTransform();
+            }, { passive: false });
 
-        function renderMarkers() {
-            markersLayer.innerHTML = '';
-            points.forEach((pt, index) => {
-                const el = document.createElement('div');
-                el.className = 'marker';
-                el.style.left = `${pt.x}px`;
-                el.style.top = `${pt.y}px`;
-                el.title = pt.name;
-                
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    activeMarkerIndex = index;
-                    document.getElementById('modal-title').innerText = "Dettagli / Modifica Tesoro";
-                    document.getElementById('point-title').value = pt.name;
-                    document.getElementById('point-desc').value = pt.desc || "";
-                    document.getElementById('btn-delete').style.display = "block";
-                    document.getElementById('marker-modal').style.display = "block";
-                });
+            // Pan Drag Operations
+            mapWrapper.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // Left click only
+                isDragging = true;
+                hasDraggedFar = false;
+                dragStartX = e.clientX - panX;
+                dragStartY = e.clientY - panY;
+            });
 
-                markersLayer.appendChild(el);
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const newPanX = e.clientX - dragStartX;
+                const newPanY = e.clientY - dragStartY;
+
+                if (Math.abs(newPanX - panX) > 4 || Math.abs(newPanY - panY) > 4) {
+                    hasDraggedFar = true;
+                }
+
+                panX = newPanX;
+                panY = newPanY;
+                updateTransform();
+
+                // Live Coordinates Inspector
+                const rect = mapWrapper.getBoundingClientRect();
+                const cursorMapX = Math.round((e.clientX - rect.left) / scale);
+                const cursorMapY = Math.round((e.clientY - rect.top) / scale);
+                document.getElementById('coord-x').innerText = Math.max(0, cursorMapX);
+                document.getElementById('coord-y').innerText = Math.max(0, cursorMapY);
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Click Map Surface to Add POI (if not dragging)
+            mapWrapper.addEventListener('click', (e) => {
+                if (hasDraggedFar) return; // Prevent triggering click after pan drag
+                if (e.target.closest('.marker-item') || e.target.closest('#poi-card')) return;
+
+                const rect = mapWrapper.getBoundingClientRect();
+                const x = Math.round((e.clientX - rect.left) / scale);
+                const y = Math.round((e.clientY - rect.top) / scale);
+
+                openAddModal(x, y);
+            });
+
+            // Zoom Control Buttons
+            document.getElementById('zoom-in').addEventListener('click', () => {
+                scale = Math.min(scale * 1.25, 2.8);
+                updateTransform();
+            });
+
+            document.getElementById('zoom-out').addEventListener('click', () => {
+                scale = Math.max(scale / 1.25, 0.35);
+                updateTransform();
+            });
+
+            document.getElementById('zoom-reset').addEventListener('click', () => {
+                scale = 0.85;
+                panX = -300;
+                panY = -150;
+                updateTransform();
             });
         }
 
-        function saveMarker() {
-            const name = document.getElementById('point-title').value.trim() || "Tesoro Senza Nome";
-            const desc = document.getElementById('point-desc').value.trim();
-
-            if (activeMarkerIndex !== null) {
-                points[activeMarkerIndex].name = name;
-                points[activeMarkerIndex].desc = desc;
-            } else if (pendingClickPos) {
-                points.push({
-                    id: Date.now(),
-                    x: pendingClickPos.x,
-                    y: pendingClickPos.y,
-                    name: name,
-                    desc: desc
-                });
-            }
-
-            localStorage.setItem('mappa_tesori_points', JSON.stringify(points));
-            renderMarkers();
-            closeModal();
+        // Apply Transformation Matrix
+        function updateTransform() {
+            mapWrapper.style.transform = `translate3d(${panX}px, ${panY}px, 0px) scale(${scale})`;
+            document.getElementById('zoom-level').innerText = `${Math.round(scale * 100)}%`;
+            positionCardIfActive();
         }
 
-        function deleteCurrentMarker() {
-            if (activeMarkerIndex !== null) {
-                points.splice(activeMarkerIndex, 1);
-                localStorage.setItem('mappa_tesori_points', JSON.stringify(points));
-                renderMarkers();
-                closeModal();
+        // Render Category Filter Pills
+        function renderCategoryFilters() {
+            const container = document.getElementById('category-filters');
+            const selectEl = document.getElementById('poi-category');
+
+            let html = `
+                <button data-cat="all" class="category-btn text-xs px-2.5 py-1 rounded border transition flex items-center space-x-1.5 ${activeFilter === 'all' ? 'bg-rdr-gold text-black border-rdr-gold font-bold' : 'bg-rdr-paper text-rdr-parchment/70 border-rdr-border hover:border-rdr-gold'}">
+                    <i class="fa-solid fa-border-all"></i>
+                    <span>All</span>
+                </button>
+            `;
+
+            let selectOptions = '';
+
+            Object.keys(CATEGORIES).forEach(key => {
+                const cat = CATEGORIES[key];
+                const isActive = activeFilter === key;
+                html += `
+                    <button data-cat="${key}" class="category-btn text-xs px-2.5 py-1 rounded border transition flex items-center space-x-1.5 ${isActive ? 'bg-rdr-gold text-black border-rdr-gold font-bold' : 'bg-rdr-paper text-rdr-parchment/70 border-rdr-border hover:border-rdr-gold'}">
+                        <i class="fa-solid ${cat.icon}" style="color: ${isActive ? '#000' : cat.color}"></i>
+                        <span>${cat.name.split('/')[0]}</span>
+                    </button>
+                `;
+
+                selectOptions += `<option value="${key}">${cat.name}</option>`;
+            });
+
+            container.innerHTML = html;
+            selectEl.innerHTML = selectOptions;
+
+            // Attach click listeners to filter buttons
+            container.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    activeFilter = btn.getAttribute('data-cat');
+                    renderCategoryFilters();
+                    renderPois();
+                });
+            });
+        }
+
+        // Render Markers on Map & Sidebar List Items
+        function renderPois() {
+            const layer = document.getElementById('markers-layer');
+            const listContainer = document.getElementById('poi-list-container');
+
+            layer.innerHTML = '';
+            listContainer.innerHTML = '';
+
+            const filtered = pois.filter(poi => {
+                const matchesCat = activeFilter === 'all' || poi.category === activeFilter;
+                const matchesSearch = poi.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                      (poi.desc && poi.desc.toLowerCase().includes(searchQuery.toLowerCase()));
+                return matchesCat && matchesSearch;
+            });
+
+            filtered.forEach(poi => {
+                const cat = CATEGORIES[poi.category] || CATEGORIES.personal;
+
+                // 1. Map Marker Dynamic Element
+                const marker = document.createElement('div');
+                marker.className = `marker-item absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 hover:scale-125 z-10 ${activePoiId === poi.id ? 'marker-active' : ''}`;
+                marker.style.left = `${poi.x}px`;
+                marker.style.top = `${poi.y}px`;
+                marker.setAttribute('data-id', poi.id);
+
+                marker.innerHTML = `
+                    <div class="w-8 h-8 rounded-full border-2 border-rdr-gold flex items-center justify-center shadow-2xl relative group" style="background-color: ${cat.bg}">
+                        <i class="fa-solid ${cat.icon} text-white text-xs"></i>
+                        <!-- Hover Quick Name Tag -->
+                        <div class="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 bg-black/90 text-rdr-gold text-[10px] font-cinzel px-2 py-0.5 rounded border border-rdr-border whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                            ${poi.name}
+                        </div>
+                    </div>
+                `;
+
+                marker.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectPoi(poi.id);
+                });
+
+                layer.appendChild(marker);
+
+                // 2. Sidebar Waypoint Card Item
+                const listItem = document.createElement('div');
+                listItem.className = `p-3 rounded border transition cursor-pointer flex items-start space-x-3 ${activePoiId === poi.id ? 'bg-rdr-darkRed/40 border-rdr-gold' : 'bg-rdr-darkParchment/60 border-rdr-border/40 hover:border-rdr-gold/70'}`;
+                
+                listItem.innerHTML = `
+                    <div class="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center text-white text-xs mt-0.5" style="background-color: ${cat.bg}">
+                        <i class="fa-solid ${cat.icon}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline">
+                            <h4 class="font-rye text-sm text-rdr-gold truncate">${poi.name}</h4>
+                        </div>
+                        <span class="text-[10px] font-cinzel text-rdr-parchment/60 block uppercase">${cat.name}</span>
+                        <p class="text-xs text-rdr-parchment/80 line-clamp-1 mt-1">${poi.desc || 'No description provided.'}</p>
+                    </div>
+                `;
+
+                listItem.addEventListener('click', () => {
+                    focusOnPoi(poi);
+                    selectPoi(poi.id);
+                });
+
+                listContainer.appendChild(listItem);
+            });
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-rdr-parchment/50 font-cinzel text-xs">
+                        <i class="fa-solid fa-compass text-2xl mb-2 text-rdr-border block"></i>
+                        No waypoints found in this area.
+                    </div>
+                `;
             }
+
+            updateActiveCount();
+        }
+
+        // Focus and Center Camera on Waypoint
+        function focusOnPoi(poi) {
+            const rect = viewport.getBoundingClientRect();
+            scale = 1.2;
+            panX = (rect.width / 2) - (poi.x * scale);
+            panY = (rect.height / 2) - (poi.y * scale);
+            updateTransform();
+        }
+
+        // Select POI and Display Detail Card
+        function selectPoi(id) {
+            activePoiId = id;
+            renderPois();
+
+            const poi = pois.find(p => p.id === id);
+            if (!poi) return;
+
+            const card = document.getElementById('poi-card');
+            const cat = CATEGORIES[poi.category] || CATEGORIES.personal;
+
+            document.getElementById('card-title').innerText = poi.name;
+            document.getElementById('card-category').innerText = cat.name;
+            document.getElementById('card-desc').innerText = poi.desc || 'No description provided for this point of interest.';
+            document.getElementById('card-coords').innerText = `X: ${poi.x} | Y: ${poi.y}`;
+            
+            const iconBox = document.getElementById('card-icon');
+            iconBox.style.backgroundColor = cat.bg;
+            iconBox.innerHTML = `<i class="fa-solid ${cat.icon}"></i>`;
+
+            card.classList.remove('hidden');
+            positionCardIfActive();
+        }
+
+        // Position Active Inspector Popup Card relative to Screen Marker
+        function positionCardIfActive() {
+            if (!activePoiId) return;
+            const poi = pois.find(p => p.id === activePoiId);
+            if (!poi) return;
+
+            const card = document.getElementById('poi-card');
+            const mapRect = mapWrapper.getBoundingClientRect();
+
+            const screenX = mapRect.left + (poi.x * scale);
+            const screenY = mapRect.top + (poi.y * scale);
+
+            card.style.left = `${screenX - 144}px`; // center horiz
+            card.style.top = `${screenY - 180}px`;  // position above marker
+        }
+
+        // Modal Operations (Add / Edit)
+        function openAddModal(x, y) {
+            document.getElementById('poi-form').reset();
+            document.getElementById('poi-id').value = '';
+            document.getElementById('poi-x').value = x;
+            document.getElementById('poi-y').value = y;
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-location-dot text-rdr-brightRed"></i> <span>Add Waypoint</span>`;
+            
+            document.getElementById('poi-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(poi) {
+            document.getElementById('poi-id').value = poi.id;
+            document.getElementById('poi-name').value = poi.name;
+            document.getElementById('poi-category').value = poi.category;
+            document.getElementById('poi-desc').value = poi.desc || '';
+            document.getElementById('poi-x').value = poi.x;
+            document.getElementById('poi-y').value = poi.y;
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-rdr-gold"></i> <span>Edit Waypoint</span>`;
+
+            closeCard();
+            document.getElementById('poi-modal').classList.remove('hidden');
         }
 
         function closeModal() {
-            document.getElementById('marker-modal').style.display = "none";
-            pendingClickPos = null;
-            activeMarkerIndex = null;
+            document.getElementById('poi-modal').classList.add('hidden');
+        }
+
+        function closeCard() {
+            document.getElementById('poi-card').classList.add('hidden');
+            activePoiId = null;
+            renderPois();
+        }
+
+        // Event Listener Wiring
+        function setupEventListeners() {
+            // Sidebar Toggle
+            document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('-translate-x-full');
+            });
+
+            // Search Bar Filter
+            document.getElementById('map-search').addEventListener('input', (e) => {
+                searchQuery = e.target.value;
+                renderPois();
+            });
+
+            // Modal Controls
+            document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+            document.getElementById('cancel-modal-btn').addEventListener('click', closeModal);
+            document.getElementById('close-card-btn').addEventListener('click', closeCard);
+
+            // Form Submit (Save / Update POI)
+            document.getElementById('poi-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('poi-id').value || Date.now().toString();
+                const name = document.getElementById('poi-name').value.trim();
+                const category = document.getElementById('poi-category').value;
+                const desc = document.getElementById('poi-desc').value.trim();
+                const x = parseInt(document.getElementById('poi-x').value);
+                const y = parseInt(document.getElementById('poi-y').value);
+
+                const existingIndex = pois.findIndex(p => p.id === id);
+                const poiData = { id, name, category, desc, x, y };
+
+                if (existingIndex > -1) {
+                    pois[existingIndex] = poiData;
+                } else {
+                    pois.push(poiData);
+                }
+
+                savePois();
+                renderPois();
+                closeModal();
+                selectPoi(id);
+            });
+
+            // Edit & Delete Card Actions
+            document.getElementById('edit-card-btn').addEventListener('click', () => {
+                if (!activePoiId) return;
+                const poi = pois.find(p => p.id === activePoiId);
+                if (poi) openEditModal(poi);
+            });
+
+            document.getElementById('delete-card-btn').addEventListener('click', () => {
+                if (!activePoiId) return;
+                pois = pois.filter(p => p.id !== activePoiId);
+                savePois();
+                closeCard();
+                renderPois();
+            });
+
+            // JSON Export & Import
+            document.getElementById('export-btn').addEventListener('click', exportWaypoints);
+            document.getElementById('import-btn').addEventListener('click', () => {
+                document.getElementById('import-file-input').click();
+            });
+            document.getElementById('import-file-input').addEventListener('change', importWaypoints);
+        }
+
+        // Export Waypoints JSON
+        function exportWaypoints() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pois, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `rdr2_map_waypoints_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Import Waypoints JSON
+        function importWaypoints(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    if (Array.isArray(imported)) {
+                        pois = imported;
+                        savePois();
+                        renderPois();
+                        alert('Waypoints successfully imported!');
+                    } else {
+                        alert('Invalid JSON format for waypoints.');
+                    }
+                } catch (err) {
+                    alert('Error parsing JSON file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function updateActiveCount() {
+            document.getElementById('active-count-badge').innerText = `${pois.length} Saved`;
         }
     </script>
 </body>
